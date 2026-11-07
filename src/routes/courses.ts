@@ -11,7 +11,8 @@ coursesRouter.get('/current-day', requireAuth, async (_req, res) => {
   const today = new Date().toISOString().slice(0, 10);
   const day = await db.collection('courseDays').findOne({ date: today });
   if (!day) return res.json({ day: null });
-  const course = await db.collection('courses').findOne({ _id: (await import('mongodb')).ObjectId.createFromHexString ? new (await import('mongodb')).ObjectId(day.courseId) : null });
+  const { ObjectId } = await import('mongodb');
+  const course = await db.collection('courses').findOne({ _id: new ObjectId(day.courseId) });
   res.json({ day, course });
 });
 
