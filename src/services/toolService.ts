@@ -35,9 +35,40 @@ export async function listToolTypes() {
   return db.collection('toolTypes').find({}).toArray();
 }
 
+export async function seedSampleTools() {
+  const db = await getDb();
+  await seedToolTypes();
+  const col = db.collection('tools');
+  const count = await col.countDocuments();
+  if (count > 0) return;
+  const types = await db.collection('toolTypes').find({}).toArray();
+  const byCode = (c: string) => types.find((t: any) => t.code === c)?._id;
+  const samples = [
+    { serial: 'ALX-GR-0012', typeCode: 'GR', status: 'available' },
+    { serial: 'ALX-GR-0013', typeCode: 'GR', status: 'inuse' },
+    { serial: 'ALX-GR-0014', typeCode: 'GR', status: 'inuse' },
+    { serial: 'ALX-GR-0015', typeCode: 'GR', status: 'maintenance' },
+    { serial: 'ALX-SC-0001', typeCode: 'SC', status: 'available' },
+  ];
+  for (const s of samples) {
+    await col.insertOne({
+      serial: s.serial,
+      typeId: byCode(s.typeCode),
+      status: s.status,
+      registeredAt: new Date(),
+      lastMaintenanceAt: null,
+      photoUrl: null,
+      location: {},
+      history: [],
+      comments: [],
+    });
+  }
+}
+
 export async function listTools(filter: { search?: string; type?: string; status?: string } = {}) {
   const db = await getDb();
   await seedToolTypes();
+  await seedSampleTools();
   const q: any = {};
   if (filter.type) q.typeId = filter.type;
   if (filter.status) q.status = filter.status;
