@@ -4,6 +4,7 @@ import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { usersRouter } from './routes/users.js';
 import { coursesRouter } from './routes/courses.js';
+import { attendanceRouter } from './routes/attendance.js';
 import { ensureFirstHead } from './services/userService.js';
 
 export const app = express();
@@ -24,6 +25,7 @@ app.use('/api', healthRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/courses', coursesRouter);
+app.use('/api/attendance', attendanceRouter);
 
 app.get('/', (_req, res) => res.json({ name: 'alex-ea-backend', ok: true }));
 
