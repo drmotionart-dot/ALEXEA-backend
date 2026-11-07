@@ -16,6 +16,8 @@ export const env = {
   firstHeadUsername: process.env.FIRST_HEAD_USERNAME ?? 'admin',
   firstHeadPassword: process.env.FIRST_HEAD_PASSWORD ?? 'admin',
   ocrSpaceKey: process.env.OCR_SPACE_KEY ?? '',
+  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME ?? '',
+  cloudinaryUploadPreset: process.env.CLOUDINARY_UPLOAD_PRESET ?? '',
   cloudinaryUrl: process.env.CLOUDINARY_URL ?? '',
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? '',
   telegramChatId: process.env.TELEGRAM_CHAT_ID ?? '',
