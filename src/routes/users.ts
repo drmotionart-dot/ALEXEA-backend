@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { requireAuth, requireRole } from '../middleware/auth.js';
-import { listPending, setStatus, resetPassword, getUserById } from '../services/userService.js';
+import { listPending, listActive, setStatus, resetPassword, getUserById } from '../services/userService.js';
 
 export const usersRouter = Router();
 
@@ -28,6 +28,11 @@ usersRouter.post('/:id/reset-password', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input' });
   await resetPassword(req.params.id, parsed.data.password);
   res.json({ ok: true });
+});
+
+usersRouter.get('/', async (_req, res) => {
+  const list = await listActive();
+  res.json({ users: list.map((u: any) => ({ id: String(u._id), name: u.name, username: u.username, role: u.role })) });
 });
 
 usersRouter.get('/:id', async (req, res) => {

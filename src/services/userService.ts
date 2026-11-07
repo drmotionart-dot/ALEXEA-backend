@@ -64,6 +64,11 @@ export async function listPending() {
   return db.collection('users').find({ status: 'pending' }).project({ passwordHash: 0 }).toArray();
 }
 
+export async function listActive() {
+  const db = await getDb();
+  return db.collection('users').find({ status: 'active' }).project({ passwordHash: 0 }).toArray();
+}
+
 export async function setStatus(id: string, status: Status) {
   const db = await getDb();
   await db.collection('users').updateOne({ _id: new ObjectId(id) }, { $set: { status } });
