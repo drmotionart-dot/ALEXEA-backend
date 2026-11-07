@@ -22,6 +22,7 @@ export const env = {
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? '',
   telegramChatId: process.env.TELEGRAM_CHAT_ID ?? '',
   retentionDays: Number(process.env.RETENTION_DAYS ?? '30'),
+  cronSecret: process.env.CRON_SECRET ?? '',
   nodeEnv: process.env.NODE_ENV ?? 'development',
 };
 

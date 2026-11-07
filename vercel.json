@@ -1,5 +1,10 @@
 {
   "version": 2,
   "builds": [{ "src": "src/index.ts", "use": "@vercel/node" }],
-  "routes": [{ "src": "/(.*)", "dest": "src/index.ts" }]
+  "routes": [{ "src": "/(.*)", "dest": "src/index.ts" }],
+  "crons": [{ "path": "/api/cleanup/cron?secret=REPLACE_WITH_CRON_SECRET", "schedule": "0 3 * * *" }]
 }
+```
+
+Wait, Vercel cron can't pass secret in query easily; better use header. Vercel cron supports headers? Actually Vercel cron invokes the URL with a `Authorization: Bearer <CRON_SECRET>` header automatically if CRON_SECRET env is set? Vercel has built-in cron secret verification. Simpler: check `Authorization: Bearer ${process.env.CRON_SECRET}` OR x-cron-secret. Let me adjust cleanup route to also accept Vercel's standard header. Vercel sends `Authorization: Bearer <CRON_SECRET>` when env CRON_SECRET is set. I'll update the route to accept either.<|end|><|start|> assistant to=edit<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name="path">
+C:\Users\Abdo Essam\Desktop\ALEXEA APP\backend\src\routes\cleanup.ts
