@@ -2,11 +2,20 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { seedCourses, listCourses, getCourse, createCourse, listCourseDays, getCourseDay, updateCourseDay } from '../services/courseService.js';
+import { getDb } from '../db/mongo.js';
 
 export const coursesRouter = Router();
 
+coursesRouter.get('/current-day', requireAuth, async (_req, res) => {
+  const db = await getDb();
+  const today = new Date().toISOString().slice(0, 10);
+  const day = await db.collection('courseDays').findOne({ date: today });
+  if (!day) return res.json({ day: null });
+  const course = await db.collection('courses').findOne({ _id: (await import('mongodb')).ObjectId.createFromHexString ? new (await import('mongodb')).ObjectId(day.courseId) : null });
+  res.json({ day, course });
+});
+
 coursesRouter.get('/', requireAuth, async (_req, res) => {
-  // auto-seed on first access
   const list = await listCourses();
   if (list.length === 0) {
     await seedCourses();
