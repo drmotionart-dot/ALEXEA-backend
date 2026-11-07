@@ -90,20 +90,43 @@ export async function getToolById(id: string) {
   return db.collection('tools').findOne({ _id: new ObjectId(id) });
 }
 
+export async function generateToolCode(typeCode: string, date?: string) {
+  const db = await getDb();
+  const d = date ? new Date(date) : new Date();
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yy = String(d.getFullYear()).slice(-2);
+  const datePart = dd + mm + yy;
+  const prefix = (typeCode || 'XX').slice(0, 2).toUpperCase();
+  const count = await db.collection('tools').countDocuments({ serial: new RegExp('^' + prefix + '\\d') });
+  const num = count + 1;
+  return prefix + num + datePart;
+}
+
 export async function createTool(data: any) {
   const db = await getDb();
+  let serial = data.serial;
+  if (!serial) {
+    const type = await db.collection('toolTypes').findOne({ _id: new (await import('mongodb')).ObjectId(data.typeId) }).catch(() => null)
+      || await db.collection('toolTypes').findOne({ code: data.typeId });
+    const code = type ? type.code : (data.typeCode || 'XX');
+    serial = await generateToolCode(code, data.registeredAt);
+  }
+  // uniqueness check
+  const existing = await db.collection('tools').findOne({ serial });
+  if (existing) throw new Error('Serial already exists');
   const res = await db.collection('tools').insertOne({
-    serial: data.serial,
+    serial,
     typeId: data.typeId,
     status: data.status || 'available',
-    registeredAt: new Date(),
+    registeredAt: data.registeredAt ? new Date(data.registeredAt) : new Date(),
     lastMaintenanceAt: null,
     photoUrl: data.photoUrl || null,
     location: data.location || {},
     history: [],
     comments: [],
   });
-  return res.insertedId;
+  return { id: res.insertedId, serial };
 }
 
 export async function updateTool(id: string, patch: any) {

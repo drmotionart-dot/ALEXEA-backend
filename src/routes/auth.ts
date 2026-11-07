@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
-import { createUser, findUserByUsername, verifyPassword } from '../services/userService.js';
+import { createUser, findUserByUsername, verifyPassword, changePassword } from '../services/userService.js';
+import { requireAuth } from '../middleware/auth.js';
 
 export const authRouter = Router();
 
@@ -28,6 +29,22 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+const changePwSchema = z.object({
+  oldPassword: z.string().min(1),
+  newPassword: z.string().min(8),
+});
+
+authRouter.post('/change-password', requireAuth, async (req: any, res) => {
+  const parsed = changePwSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
+  try {
+    await changePassword(req.user.id, parsed.data.oldPassword, parsed.data.newPassword);
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(400).json({ error: e?.message || 'change failed' });
+  }
+});
+
 authRouter.post('/login', async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input' });
@@ -39,5 +56,5 @@ authRouter.post('/login', async (req, res) => {
   const ok = await verifyPassword(user as any, parsed.data.password);
   if (!ok) return res.status(401).json({ error: 'Invalid username or password' });
   const token = jwt.sign({ id: String(user._id) }, env.jwtSecret, { expiresIn: '7d' });
-  res.json({ token, user: { id: String(user._id), name: user.name, username: user.username, role: user.role } });
+  res.json({ token, user: { id: String(user._id), name: user.name, username: user.username, role: user.role, mustChangePassword: !!(user as any).mustChangePassword } });
 });

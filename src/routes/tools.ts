@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { requireAuth, requireRole } from '../middleware/auth.js';
-import { seedToolTypes, listToolTypes, listTools, getToolBySerial, getToolById, createTool, updateTool, addComment, resolveComment, repairCount } from '../services/toolService.js';
+import { seedToolTypes, listToolTypes, listTools, getToolBySerial, getToolById, createTool, updateTool, addComment, resolveComment, repairCount, generateToolCode } from '../services/toolService.js';
 
 export const toolsRouter = Router();
 
@@ -31,8 +31,19 @@ toolsRouter.get('/', requireAuth, async (req, res) => {
 });
 
 toolsRouter.post('/', requireAuth, requireRole('head'), async (req, res) => {
-  const id = await createTool(req.body);
-  res.json({ id: String(id) });
+  try {
+    const r = await createTool(req.body);
+    res.json({ id: String(r.id), serial: r.serial });
+  } catch (e: any) {
+    res.status(400).json({ error: e?.message || 'create failed' });
+  }
+});
+
+toolsRouter.get('/suggest-code', requireAuth, requireRole('head'), async (req, res) => {
+  const typeCode = String(req.query.typeCode || 'XX');
+  const date = req.query.date ? String(req.query.date) : undefined;
+  const code = await generateToolCode(typeCode, date);
+  res.json({ code });
 });
 
 toolsRouter.patch('/:id', requireAuth, requireRole('head'), async (req, res) => {

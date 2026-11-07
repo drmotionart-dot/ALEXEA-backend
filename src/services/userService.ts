@@ -77,7 +77,17 @@ export async function setStatus(id: string, status: Status) {
 export async function resetPassword(id: string, newPassword: string) {
   const db = await getDb();
   const passwordHash = await bcrypt.hash(newPassword, 10);
-  await db.collection('users').updateOne({ _id: new ObjectId(id) }, { $set: { passwordHash } });
+  await db.collection('users').updateOne({ _id: new ObjectId(id) }, { $set: { passwordHash, mustChangePassword: true } });
+}
+
+export async function changePassword(id: string, oldPassword: string, newPassword: string) {
+  const db = await getDb();
+  const u = await db.collection<UserDoc>('users').findOne({ _id: new ObjectId(id) });
+  if (!u) throw new Error('User not found');
+  const ok = await bcrypt.compare(oldPassword, u.passwordHash);
+  if (!ok) throw new Error('Current password is wrong');
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await db.collection('users').updateOne({ _id: new ObjectId(id) }, { $set: { passwordHash, mustChangePassword: false } });
 }
 
 export async function getUserById(id: string) {

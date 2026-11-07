@@ -9,6 +9,7 @@ import { candidatesRouter } from './routes/candidates.js';
 import { placesRouter } from './routes/places.js';
 import { toolsRouter } from './routes/tools.js';
 import { cleanupRouter } from './routes/cleanup.js';
+import { analyzeRouter } from './routes/analyze.js';
 import { placementRouter } from './routes/placement.js';
 import { ensureFirstHead } from './services/userService.js';
 
@@ -35,6 +36,7 @@ app.use('/api/candidates', candidatesRouter);
 app.use('/api/places', placesRouter);
 app.use('/api/tools', toolsRouter);
 app.use('/api/cleanup', cleanupRouter);
+app.use('/api/analyze', analyzeRouter);
 app.use('/api/placement', placementRouter);
 
 app.get('/', (_req, res) => res.json({ name: 'alex-ea-backend', ok: true }));
