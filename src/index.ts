@@ -3,6 +3,7 @@ import cors from 'cors';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { usersRouter } from './routes/users.js';
+import { coursesRouter } from './routes/courses.js';
 import { ensureFirstHead } from './services/userService.js';
 
 export const app = express();
@@ -22,6 +23,7 @@ app.use(async (_req, _res, next) => {
 app.use('/api', healthRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/courses', coursesRouter);
 
 app.get('/', (_req, res) => res.json({ name: 'alex-ea-backend', ok: true }));
 
