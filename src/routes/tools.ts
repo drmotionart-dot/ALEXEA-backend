@@ -1,13 +1,27 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { requireAuth, requireRole } from '../middleware/auth.js';
-import { seedToolTypes, listToolTypes, listTools, getToolBySerial, getToolById, createTool, updateTool, addComment, resolveComment, repairCount, generateToolCode } from '../services/toolService.js';
+import {
+  listToolTypes, listTools, getToolBySerial, getToolById, createTool, updateTool,
+  addComment, resolveComment, repairCount, generateToolCode, createToolType,
+} from '../services/toolService.js';
+import { logActivity } from '../services/activityService.js';
 
 export const toolsRouter = Router();
 
 toolsRouter.get('/types', requireAuth, async (_req, res) => {
   const types = await listToolTypes();
   res.json({ types });
+});
+
+// Add a new tool type (heads only).
+toolsRouter.post('/types', requireAuth, requireRole('head'), async (req, res) => {
+  try {
+    const id = await createToolType(req.body || {});
+    res.json({ id: String(id) });
+  } catch (e: any) {
+    res.status(400).json({ error: e?.message || 'could not add type' });
+  }
 });
 
 toolsRouter.get('/repair-count', requireAuth, async (_req, res) => {
@@ -33,6 +47,8 @@ toolsRouter.get('/', requireAuth, async (req, res) => {
 toolsRouter.post('/', requireAuth, requireRole('head'), async (req, res) => {
   try {
     const r = await createTool(req.body);
+    const user = (req as any).user;
+    logActivity(user.name, user.role, 'tool', 'registered a new tool <b>' + r.serial + '</b>', 'tools').catch(() => {});
     res.json({ id: String(r.id), serial: r.serial });
   } catch (e: any) {
     res.status(400).json({ error: e?.message || 'create failed' });
@@ -46,10 +62,20 @@ toolsRouter.get('/suggest-code', requireAuth, requireRole('head'), async (req, r
   res.json({ code });
 });
 
-toolsRouter.patch('/:id', requireAuth, requireRole('head'), async (req, res) => {
-  const t = await updateTool(req.params.id, req.body);
+// Any signed-in member can start using / return a tool. Heads can also set maintenance.
+toolsRouter.patch('/:id', requireAuth, async (req, res) => {
+  const patch = req.body || {};
+  if (patch.status && patch.status === 'maintenance' && (req as any).user.role !== 'head') {
+    return res.status(403).json({ error: 'Only heads can send a tool to maintenance' });
+  }
+  const t = await updateTool(req.params.id, patch);
   const user = (req as any).user;
-  import('../services/activityService.js').then(m => m.logActivity(user.name, user.role, 'tool', 'changed status of ' + (t as any).serial + ' to ' + req.body.status)).catch(()=>{});
+  if (patch.status) {
+    logActivity(user.name, user.role, 'tool', 'set <b>' + (t as any).serial + '</b> to ' + label(patch.status), 'tools').catch(() => {});
+  }
+  if (patch.photoUrl !== undefined) {
+    logActivity(user.name, user.role, 'tool', 'updated the photo of <b>' + (t as any).serial + '</b>', 'tools').catch(() => {});
+  }
   res.json({ tool: t });
 });
 
@@ -59,6 +85,13 @@ toolsRouter.post('/:id/comments', requireAuth, async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input' });
   const user = (req as any).user;
   const c = await addComment(req.params.id, user.name, parsed.data.text, !!parsed.data.needsRepair);
+  const t: any = await getToolById(req.params.id);
+  logActivity(
+    user.name, user.role,
+    parsed.data.needsRepair ? 'repair' : 'tool',
+    (parsed.data.needsRepair ? 'reported <b>' + (t?.serial || '') + '</b> as needing repair: ' : 'commented on <b>' + (t?.serial || '') + '</b>: ') + '“' + parsed.data.text + '”',
+    'tools'
+  ).catch(() => {});
   res.json({ comment: c });
 });
 
@@ -66,3 +99,7 @@ toolsRouter.patch('/:id/comments/:index/resolve', requireAuth, requireRole('head
   await resolveComment(req.params.id, Number(req.params.index));
   res.json({ ok: true });
 });
+
+function label(s: string) {
+  return s === 'available' ? 'Available' : s === 'inuse' ? 'In use' : s === 'maintenance' ? 'Maintenance' : s;
+}

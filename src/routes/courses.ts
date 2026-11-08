@@ -3,15 +3,43 @@ import { z } from 'zod';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { seedCourses, listCourses, getCourse, createCourse, listCourseDays, getCourseDay, updateCourseDay } from '../services/courseService.js';
 import { getDb } from '../db/mongo.js';
+import { ObjectId } from 'mongodb';
+import { logActivity } from '../services/activityService.js';
 
 export const coursesRouter = Router();
 
-coursesRouter.get('/current-day', requireAuth, async (_req, res) => {
+async function dayWithCourse(date?: string) {
   const db = await getDb();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = date || new Date().toISOString().slice(0, 10);
+  let day = await db.collection('courseDays').findOne({ date: today });
+  if (!day) {
+    // next day with a course, so the hands-on/attendance page is useful before the course starts
+    day = await db.collection('courseDays').findOne({ date: { $gte: today } }, { sort: { date: 1 } });
+  }
+  if (!day) return { day: null, course: null };
+  const course = await db.collection('courses').findOne({ _id: new ObjectId(day.courseId) });
+  return { day, course };
+}
+
+coursesRouter.get('/current-day', requireAuth, async (req, res) => {
+  const date = req.query.date ? String(req.query.date) : undefined;
+  const db = await getDb();
+  const today = date || new Date().toISOString().slice(0, 10);
   const day = await db.collection('courseDays').findOne({ date: today });
-  if (!day) return res.json({ day: null });
-  const { ObjectId } = await import('mongodb');
+  if (!day) return res.json({ day: null, course: null });
+  const course = await db.collection('courses').findOne({ _id: new ObjectId(day.courseId) });
+  res.json({ day, course });
+});
+
+// Today's day, or the next course day when no course runs today.
+coursesRouter.get('/active-day', requireAuth, async (_req, res) => {
+  res.json(await dayWithCourse());
+});
+
+coursesRouter.get('/day-by-date/:date', requireAuth, async (req, res) => {
+  const db = await getDb();
+  const day = await db.collection('courseDays').findOne({ date: req.params.date });
+  if (!day) return res.json({ day: null, course: null });
   const course = await db.collection('courses').findOne({ _id: new ObjectId(day.courseId) });
   res.json({ day, course });
 });
@@ -62,7 +90,21 @@ coursesRouter.get('/day/:dayId', requireAuth, async (req, res) => {
   res.json({ day: d });
 });
 
+const dayPatch = z.object({
+  type: z.enum(['d12', 'dw', 'da', 'shift', 'none']).optional(),
+  rows: z.array(z.any()).optional(),
+  candidates: z.array(z.string()).optional(),
+  plan: z.any().optional(),
+  team: z.any().optional(),
+  toolAssignments: z.array(z.any()).optional(),
+  locked: z.boolean().optional(),
+});
+
 coursesRouter.patch('/day/:dayId', requireAuth, requireRole('head'), async (req, res) => {
-  const d = await updateCourseDay(req.params.dayId, req.body);
+  const parsed = dayPatch.safeParse(req.body || {});
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
+  const d = await updateCourseDay(req.params.dayId, parsed.data);
+  const user = (req as any).user;
+  logActivity(user.name, user.role, 'cal', 'updated the programme of <b>' + (d as any)?.date + '</b>', 'calendar').catch(() => {});
   res.json({ day: d });
 });
