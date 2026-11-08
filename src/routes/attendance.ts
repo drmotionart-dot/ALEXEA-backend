@@ -6,6 +6,14 @@ import { getCourseDay } from '../services/courseService.js';
 
 export const attendanceRouter = Router();
 
+attendanceRouter.delete('/assignments', requireAuth, requireRole('head'), async (req, res) => {
+  const courseDayId = String(req.query.courseDayId || '');
+  if (!courseDayId) return res.status(400).json({ error: 'courseDayId required' });
+  const { getCourseDay, updateCourseDay } = await import('../services/courseService.js');
+  await updateCourseDay(courseDayId, { team: {} });
+  res.json({ ok: true });
+});
+
 attendanceRouter.get('/', requireAuth, async (req, res) => {
   const courseDayId = String(req.query.courseDayId || '');
   if (!courseDayId) return res.status(400).json({ error: 'courseDayId required' });

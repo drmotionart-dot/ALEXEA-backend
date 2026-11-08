@@ -35,6 +35,14 @@ usersRouter.get('/', async (_req, res) => {
   res.json({ users: list.map((u: any) => ({ id: String(u._id), name: u.name, username: u.username, role: u.role })) });
 });
 
+usersRouter.patch('/:id/role', requireAuth, requireRole('head'), async (req, res) => {
+  const role = req.body?.role === 'head' ? 'head' : 'member';
+  const db = (await import('../db/mongo.js')).getDb;
+  const d = await (await import('../db/mongo.js')).getDb();
+  await d.collection('users').updateOne({ _id: new (await import('mongodb')).ObjectId(req.params.id) }, { $set: { role } });
+  res.json({ ok: true });
+});
+
 usersRouter.get('/:id', async (req, res) => {
   const u = await getUserById(req.params.id);
   if (!u) return res.status(404).json({ error: 'not found' });

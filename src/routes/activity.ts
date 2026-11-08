@@ -13,6 +13,12 @@ activityRouter.get('/', requireAuth, requireRole('head'), async (req, res) => {
   res.json({ entries: list });
 });
 
+activityRouter.delete('/', requireAuth, requireRole('head'), async (_req, res) => {
+  const db = await (await import('../db/mongo.js')).getDb();
+  await db.collection('activity').deleteMany({});
+  res.json({ ok: true });
+});
+
 activityRouter.post('/', requireAuth, async (req, res) => {
   const schema = z.object({ kind: z.string(), text: z.string(), link: z.string().optional() });
   const parsed = schema.safeParse(req.body);
