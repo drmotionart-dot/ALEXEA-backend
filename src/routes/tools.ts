@@ -48,6 +48,8 @@ toolsRouter.get('/suggest-code', requireAuth, requireRole('head'), async (req, r
 
 toolsRouter.patch('/:id', requireAuth, requireRole('head'), async (req, res) => {
   const t = await updateTool(req.params.id, req.body);
+  const user = (req as any).user;
+  import('../services/activityService.js').then(m => m.logActivity(user.name, user.role, 'tool', 'changed status of ' + (t as any).serial + ' to ' + req.body.status)).catch(()=>{});
   res.json({ tool: t });
 });
 

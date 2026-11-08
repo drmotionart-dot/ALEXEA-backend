@@ -57,4 +57,6 @@ authRouter.post('/login', async (req, res) => {
   if (!ok) return res.status(401).json({ error: 'Invalid username or password' });
   const token = jwt.sign({ id: String(user._id) }, env.jwtSecret, { expiresIn: '7d' });
   res.json({ token, user: { id: String(user._id), name: user.name, username: user.username, role: user.role, mustChangePassword: !!(user as any).mustChangePassword } });
+  // log activity (fire and forget)
+  import('../services/activityService.js').then(m => m.logActivity(user.name, user.role, 'checkin', 'logged in')).catch(()=>{});
 });
