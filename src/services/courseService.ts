@@ -86,7 +86,12 @@ export async function getCourseDay(id: string) {
 
 export async function updateCourseDay(id: string, patch: any) {
   const db = await getDb();
-  patch.version = (patch.version ?? 0) + 1;
-  await db.collection('courseDays').updateOne({ _id: new ObjectId(id) }, { $set: patch });
+  const clean = { ...patch };
+  delete clean._id;
+  delete clean.version;
+  await db.collection('courseDays').updateOne(
+    { _id: new ObjectId(id) },
+    { $set: clean, $inc: { version: 1 } },
+  );
   return getCourseDay(id);
 }

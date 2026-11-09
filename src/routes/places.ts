@@ -3,10 +3,12 @@ import { requireAuth } from '../middleware/auth.js';
 import { getDb } from '../db/mongo.js';
 import { ObjectId } from 'mongodb';
 import { normalizeText } from '../matching/normalize.js';
+import { seedPlaces } from '../services/placeService.js';
 
 export const placesRouter = Router();
 
 placesRouter.get('/', requireAuth, async (req, res) => {
+  await seedPlaces();
   const db = await getDb();
   const type = req.query.type ? String(req.query.type) : undefined;
   const q: any = {};

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import {
   listToolTypes, listTools, getToolBySerial, getToolById, createTool, updateTool,
-  addComment, resolveComment, repairCount, generateToolCode, createToolType,
+  addComment, resolveComment, repairCount, generateToolCode, createToolType, deleteTool,
 } from '../services/toolService.js';
 import { logActivity } from '../services/activityService.js';
 
@@ -77,6 +77,15 @@ toolsRouter.patch('/:id', requireAuth, async (req, res) => {
     logActivity(user.name, user.role, 'tool', 'updated the photo of <b>' + (t as any).serial + '</b>', 'tools').catch(() => {});
   }
   res.json({ tool: t });
+});
+
+// Remove a tool from the inventory (heads only). History lives in the activity log.
+toolsRouter.delete('/:id', requireAuth, requireRole('head'), async (req, res) => {
+  const t: any = await deleteTool(req.params.id);
+  if (!t) return res.status(404).json({ error: 'Tool not found' });
+  const user = (req as any).user;
+  logActivity(user.name, user.role, 'tool', 'removed tool <b>' + (t.serial || '') + '</b> from the inventory', 'tools').catch(() => {});
+  res.json({ ok: true });
 });
 
 toolsRouter.post('/:id/comments', requireAuth, async (req, res) => {

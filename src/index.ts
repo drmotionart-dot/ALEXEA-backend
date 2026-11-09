@@ -18,7 +18,7 @@ import { ensureFirstHead } from './services/userService.js';
 
 export const app = express();
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '4mb' }));
 
 // seed first head lazily on first request
 let seeded = false;

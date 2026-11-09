@@ -2,10 +2,12 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { getDb } from '../db/mongo.js';
 import { normalizeText, soundKey, jaroWinkler } from '../matching/normalize.js';
+import { seedPlaces } from '../services/placeService.js';
 
 export const matchRouter = Router();
 
 async function bestMatch(type: string, raw: string, parentId?: string) {
+  await seedPlaces();
   const db = await getDb();
   const norm = normalizeText(raw);
   const sk = soundKey(raw);

@@ -44,6 +44,21 @@ coursesRouter.get('/day-by-date/:date', requireAuth, async (req, res) => {
   res.json({ day, course });
 });
 
+// Day types for a date range, so the calendar can mark real hands-on days without loading every day document.
+coursesRouter.get('/days', requireAuth, async (req, res) => {
+  const from = String(req.query.from || '').slice(0, 10);
+  const to = String(req.query.to || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    return res.status(400).json({ error: 'from and to are required (YYYY-MM-DD)' });
+  }
+  const db = await getDb();
+  const list = await db.collection('courseDays')
+    .find({ date: { $gte: from, $lte: to } }, { projection: { date: 1, type: 1, courseId: 1, index: 1 } })
+    .sort({ date: 1 })
+    .toArray();
+  res.json({ days: list.map((d: any) => ({ date: d.date, type: d.type || 'none', courseId: d.courseId, index: d.index })) });
+});
+
 coursesRouter.get('/', requireAuth, async (_req, res) => {
   const list = await listCourses();
   if (list.length === 0) {
@@ -91,7 +106,7 @@ coursesRouter.get('/day/:dayId', requireAuth, async (req, res) => {
 });
 
 const dayPatch = z.object({
-  type: z.enum(['d12', 'dw', 'da', 'shift', 'none']).optional(),
+  type: z.enum(['d12', 'dw', 'da', 'sh', 'shift', 'none']).optional(),
   rows: z.array(z.any()).optional(),
   candidates: z.array(z.string()).optional(),
   plan: z.any().optional(),
@@ -103,8 +118,17 @@ const dayPatch = z.object({
 coursesRouter.patch('/day/:dayId', requireAuth, requireRole('head'), async (req, res) => {
   const parsed = dayPatch.safeParse(req.body || {});
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-  const d = await updateCourseDay(req.params.dayId, parsed.data);
+  const patch: any = { ...parsed.data };
+  if (patch.type === 'shift') patch.type = 'sh';
+  const d = await updateCourseDay(req.params.dayId, patch);
   const user = (req as any).user;
-  logActivity(user.name, user.role, 'cal', 'updated the programme of <b>' + (d as any)?.date + '</b>', 'calendar').catch(() => {});
+  const date = (d as any)?.date || '';
+  if (patch.team !== undefined) {
+    logActivity(user.name, user.role, 'assign', 'changed the Upper and Lower team for <b>' + date + '</b>', 'attendance').catch(() => {});
+  } else if (patch.plan !== undefined) {
+    logActivity(user.name, user.role, 'assign', 'changed the hands-on plan for <b>' + date + '</b>', 'hands-on').catch(() => {});
+  } else {
+    logActivity(user.name, user.role, 'cal', 'updated the programme of <b>' + date + '</b>', 'calendar').catch(() => {});
+  }
   res.json({ day: d });
 });

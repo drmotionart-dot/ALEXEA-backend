@@ -184,6 +184,15 @@ export async function updateTool(id: string, patch: any) {
   return getToolById(id);
 }
 
+export async function deleteTool(id: string) {
+  const db = await getDb();
+  if (!ObjectId.isValid(id)) return null;
+  const t: any = await getToolById(id);
+  if (!t) return null;
+  await db.collection('tools').deleteOne({ _id: new ObjectId(id) });
+  return t;
+}
+
 export async function addComment(toolId: string, by: string, text: string, needsRepair: boolean) {
   const db = await getDb();
   const comment = { by, date: new Date(), text, needsRepair, resolved: false };

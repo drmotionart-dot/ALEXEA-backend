@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
-import { createUser, findUserByUsername, verifyPassword, changePassword } from '../services/userService.js';
+import { createUser, findUserByUsername, verifyPassword, changePassword, getUserById } from '../services/userService.js';
 import { requireAuth } from '../middleware/auth.js';
 
 export const authRouter = Router();
@@ -43,6 +43,12 @@ authRouter.post('/change-password', requireAuth, async (req: any, res) => {
   } catch (e: any) {
     res.status(400).json({ error: e?.message || 'change failed' });
   }
+});
+
+authRouter.get('/me', requireAuth, async (req: any, res) => {
+  const user = await getUserById(req.user.id);
+  if (!user || user.status !== 'active') return res.status(401).json({ error: 'Please log in again.' });
+  res.json({ user: { id: String(user._id), name: user.name, username: user.username, role: user.role, mustChangePassword: !!(user as any).mustChangePassword } });
 });
 
 authRouter.post('/login', async (req, res) => {
